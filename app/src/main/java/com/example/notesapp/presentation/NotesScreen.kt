@@ -104,13 +104,17 @@ fun NotesScreen(
                             if (!text.text.isNullOrEmpty()) {
                                 viewModel.onEvent(NotesEvent.CreateNoteEvent(text.text))
                             }
+                            text = TextFieldValue()
                         }) {
                         Text("Save")
                     }
                 },
                 dismissButton = {
                     Button(
-                        onClick = { openDialog.value = false }) {
+                        onClick = {
+                            openDialog.value = false
+                            text = TextFieldValue()
+                        }) {
                         Text("No")
                     }
                 },
@@ -166,7 +170,7 @@ fun NoteColumn(
                 }
             )
             if (index < noteList.size) {
-                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                Divider(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp))
             }
         }
     }

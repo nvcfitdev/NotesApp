@@ -1,5 +1,7 @@
 package com.example.notesapp.presentation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,13 +11,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddTask
-import androidx.compose.material.icons.filled.HorizontalRule
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -52,9 +58,12 @@ fun NotesScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.state.isLoading)
     val state = viewModel.state
     var text by remember { mutableStateOf(TextFieldValue()) }
+    var openDialog = remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         SwipeRefresh(state = swipeRefreshState, onRefresh = { viewModel.queryNotes() }) {
             NoteColumn(modifier = Modifier.fillMaxSize(), state.noteList)
@@ -63,7 +72,73 @@ fun NotesScreen(
                     .fillMaxWidth()
                     .padding(5.dp)
             )
-            AddNoteButton(newNote = text.text)
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.End
+            ) {
+                ExtendedFloatingActionButton(
+                    icon = { Icon(Icons.Filled.AddCircleOutline, "") },
+                    text = { Text("Add Note") },
+                    onClick = { openDialog.value = true },
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                    modifier = Modifier
+                        .padding(16.dp)
+                )
+            }
+        }
+
+        if (openDialog.value) {
+            AlertDialog(
+                modifier = Modifier
+                    .requiredHeight(500.dp)
+                    .fillMaxWidth(),
+                containerColor = Color.LightGray,
+                onDismissRequest = {
+                    openDialog.value = false
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            openDialog.value = false
+                            if (!text.text.isNullOrEmpty()) {
+                                viewModel.onEvent(NotesEvent.CreateNoteEvent(text.text))
+                            }
+                        }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = { openDialog.value = false }) {
+                        Text("No")
+                    }
+                },
+                title = { Text("New Note", color = Color.Black, fontWeight = FontWeight.Medium) },
+                text = {
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { newText ->
+                            text = newText
+                        },
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Handle the "Done" action here
+                            }
+                        ),
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .background(Color.White)
+                            .border(1.dp, color = Color.LightGray)
+                            .padding(12.dp),
+                    )
+                },
+            )
         }
     }
 }
@@ -74,7 +149,6 @@ fun NoteColumn(
     noteList: MutableList<Note>,
     viewModel: NotesViewModel = hiltViewModel()
 ) {
-    var data by remember { mutableStateOf(noteList) }
     val openDialog = remember { mutableStateOf(false) }
     var selectedNote by remember { mutableStateOf(Note(0, "")) }
 
@@ -91,6 +165,9 @@ fun NoteColumn(
                     openDialog.value = true
                 }
             )
+            if (index < noteList.size) {
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
         }
     }
 
@@ -133,52 +210,6 @@ fun NoteColumn(
 }
 
 @Composable
-fun AddNoteDialog() {
-    Column {
-        val openDialog = remember { mutableStateOf(false) }
-
-        Button(onClick = {
-            openDialog.value = true
-        }) {
-            Text("Click me")
-        }
-
-        if (openDialog.value) {
-            AlertDialog(
-                onDismissRequest = {
-                    // Dismiss the dialog when the user clicks outside the dialog or on the back
-                    // button. If you want to disable that functionality, simply use an empty
-                    // onCloseRequest.
-                    openDialog.value = false
-                },
-                title = {
-                    Text(text = "Dialog Title")
-                },
-                text = {
-
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            openDialog.value = false
-                        }) {
-                        Text("This is the Confirm Button")
-                    }
-                },
-                dismissButton = {
-                    Button(
-                        onClick = {
-                            openDialog.value = false
-                        }) {
-                        Text("This is the dismiss Button")
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
 fun NoteItem(
     note: Note,
     modifier: Modifier = Modifier
@@ -188,46 +219,10 @@ fun NoteItem(
     ) {
         Text(
             text = note.note,
-            modifier = Modifier.padding(3.dp),
             maxLines = 4,
             fontWeight = FontWeight.Normal,
             overflow = TextOverflow.Ellipsis,
             color = Color.White
-        )
-    }
-}
-
-@Composable
-fun AddNoteButton(
-    newNote: String = "",
-    viewModel: NotesViewModel = hiltViewModel(),
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.End
-    ) {
-        ExtendedFloatingActionButton(
-            icon = { Icon(Icons.Filled.AddTask, "") },
-            text = { Text("Add Note") },
-            onClick = {
-                viewModel.onEvent(NotesEvent.CreateNoteEvent(newNote))
-            },
-            elevation = FloatingActionButtonDefaults.elevation(8.dp),
-            modifier = Modifier
-                .padding(16.dp)  // Optional padding
-        )
-
-        ExtendedFloatingActionButton(
-            icon = { Icon(Icons.Filled.HorizontalRule, "") },
-            text = { Text("Delete Note") },
-            onClick = {
-                viewModel.onEvent(NotesEvent.CreateNoteEvent(newNote))
-            },
-            elevation = FloatingActionButtonDefaults.elevation(8.dp),
-            modifier = Modifier
-                .padding(16.dp)  // Optional padding
         )
     }
 }
